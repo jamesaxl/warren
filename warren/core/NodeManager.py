@@ -1,12 +1,15 @@
-from fcp import FCPNode
 from PyQt4.QtCore import QThread, SIGNAL, QString, pyqtSignal
 from PyQt4.QtGui import QDialog, QClipboard, qApp
+from warren.fcp.hyperocha import FCPNode
 from warren.ui.FileSent import Ui_fileDroppedDialog
 from warren.ui.PasteInsert import Ui_PasteInsertDialog
 import FileManager
 import os.path
 
 SECLEVELS = {'LOW':0, 'NORMAL':1, 'HIGH':2, 'MAXIMUM':3}
+
+WARREN_DEFAULT_WATCHDOG_DELAY = 10000
+WARREN_DEFAULT_TIMEOUT = 5000
 
 class NodeManager(QThread):
 
@@ -34,22 +37,23 @@ class NodeManager(QThread):
             self.updateNodeConfigValues()
             self.emit(SIGNAL("nodeConnected()"))
         except Exception, e:
+            print e
             self.node = None
 
     def updateNodeConfigValues(self):
-        nconfig = self.node.getconfig(async=False,WithCurrent=True,WithExpertFlag=True)
-        self.physicalSeclevel = SECLEVELS[nconfig['current.security-levels.physicalThreatLevel']]
-        self.nodeDownloadDir = nconfig['current.node.downloadsDir']
-        self.downloadDDA = nconfig['expertFlag.fcp.assumeDownloadDDAIsAllowed']=='true'
+        nconfig = self.node.getConfig(WithCurrent=True,WithExpertFlag=True)
+        self.physicalSeclevel = SECLEVELS[nconfig.getValue('current.security-levels.physicalThreatLevel')]
+        self.nodeDownloadDir = nconfig.getValue('current.node.downloadsDir')
+        self.downloadDDA = nconfig.getValue('expertFlag.fcp.assumeDownloadDDAIsAllowed')=='true'
         if not os.path.isabs(self.nodeDownloadDir):
-            self.nodeDownloadDir = os.path.join(nconfig['current.node.cfgDir'], self.nodeDownloadDir)
+            self.nodeDownloadDir = os.path.join(nconfig.getValue('current.node.cfgDir'), self.nodeDownloadDir)
 
     def nodeNotConnected(self):
         self.emit(SIGNAL("nodeConnectionLost()"))
-        if self.node:
-            self.node.shutdown()
-            self.node = None
-        self.connectNode()
+        #if self.node:
+            #self.node.shutdown()
+        #    self.node = None
+        #self.connectNode()
 
     def putKeyOnQueue(self, key):
         if self.physicalSeclevel > 0:
@@ -109,7 +113,7 @@ class NodeManager(QThread):
     def stop(self):
         self.watchdog.quit()
         if self.node:
-            self.node.shutdown()
+            pass #self.node.shutdown()
         self.quit()
 
 class PasteInsert(QDialog):
@@ -134,28 +138,26 @@ class PasteInsert(QDialog):
         if clip.supportsSelection():
             clip.setText(str(self.key),QClipboard.Selection)
 
-
     def messageReceived(self,msg):
         val1 = msg[0]
         val2 = msg[1]
-        if val1=='pending':
-            if val2.get('header') == 'URIGenerated':
-                self.ui.keyLineEdit.setText(val2.get('URI'))
-                self.ui.keyLineEdit.setCursorPosition(0)
-                self.ui.pushButton.setEnabled(True)
-                self.key = val2.get('URI')
-            elif val2.get('header') == 'SimpleProgress':
-                self.ui.progressBar.setMaximum(val2.get('Total'))
-                self.ui.progressBar.setValue(val2.get('Succeeded'))
-        elif val1=='failed':
-            self.ui.keyLineEdit.setText('Insert Failed: '+ str(val2.get('CodeDescription','Unknown error')))
-        elif val1=='successful':
+        if val1 == 'URIGenerated':
+            self.ui.keyLineEdit.setText(val2.getValue('URI'))
+            self.ui.keyLineEdit.setCursorPosition(0)
+            self.ui.pushButton.setEnabled(True)
+            self.key = val2.getValue('URI')
+        elif val1 == 'SimpleProgress':
+            self.ui.progressBar.setMaximum(val2.getIntValue('Total'))
+            self.ui.progressBar.setValue(val2.getIntValue('Succeeded'))
+        elif val1=='PutFailed':
+            self.ui.keyLineEdit.setText('Insert Failed: '+ str(val2.getValue('CodeDescription','Unknown error')))
+        elif val1=='PutSuccessful':
             self.ui.buttonBox.buttons()[0].setEnabled(True)
             self.ui.buttonBox.buttons()[1].setEnabled(False)
             self.ui.keyLineEdit.setCursorPosition(0)
             self.pasteFinished.emit()
-
-
+        else:
+            print "unhandled message "+val1
 
 class FileDropped(QDialog):
 
@@ -191,12 +193,12 @@ class PutPaste(QThread):
     def run(self):
         keyType = self.nodeManager.config['warren']['pastebin_keytype']
         insert = self.putPaste(self.paste, self.insertcb, async=True, keyType=keyType)
-        insert.wait()
+        #insert.wait()
 
     def putPaste(self, qPaste, callback, async=True, keyType='SSK@'):
         paste = unicode(qPaste)
         paste = paste.encode('utf-8')
-        insert = self.node.put(uri=keyType,data=paste,async=async,name='pastebin',Verbosity=5,mimetype="text/plain; charset=utf-8",callback=callback,waituntilsent=True,priority=2,realtime=True)
+        insert = self.node.put(keyType,paste,callback,name='pastebin',Verbosity=5,mimetype="text/plain; charset=utf-8", waituntilsent=True,priority=2,realtime=True)
         return insert
 
     def insertcb(self,val1,val2):
@@ -210,15 +212,15 @@ class NodeWatchdog(QThread):
         self.start()
 
     def run(self):
-        QThread.msleep(10000) # on startup wait additional 10 seconds
+        QThread.msleep(WARREN_DEFAULT_WATCHDOG_DELAY) # on startup wait additional 10 seconds
         while(True):
-            QThread.msleep(5000)
-            isNodeRunning = self.nodeManager.node is not None and self.nodeManager.node.running
-            isNodeAlive = self.nodeManager.node is not None and self.nodeManager.node.nodeIsAlive
+            QThread.msleep(WARREN_DEFAULT_TIMEOUT)
             try:
-                self.nodeManager.node._submitCmd('warren_ping','Void',async=False,timeout=1)
+                self.nodeManager.node.ping('warren_ping')
+                isOK=True
             except:
-                pass
-            if not isNodeRunning or not isNodeAlive:
+                isOK=False
+
+            if not isOK:
                 self.emit(SIGNAL("nodeNotConnected()"))
 

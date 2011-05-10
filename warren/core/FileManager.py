@@ -42,36 +42,17 @@ class FileInsert(QThread):
         # in this request. So failing DDA jobs die. This is a trial-and-error workaround to see if we can upload the file from 
         # disk or if we have to send it over socket.
         # TODO GET RID OF PYFREENET or tell toad_ to fix testDDARequest!!!!!!
-        testDDAResult = False
         keyType = self.nodeManager.config['warren']['file_keytype']
         if self.url[:4] == 'file':
             plainUrl = self.url[7:]
-            try:
-                directory = os.path.split(plainUrl)[0]
-                testDDA = self.nodeManager.node.testDDA(async=False, Directory=directory, WantReadDirectory=True, timeout=5)
-                if 'TestDDAComplete' in str(testDDA.items()): #TODO check for the real keys
-                    testDDAResult = True
-            except Exception, e:
-                testDDAResult = False
-
-            if testDDAResult:
-                opener = buildOpener(self.url, self.proxy)
-                u = opener.open(self.url)
-                filename = os.path.basename(self.url)
-                insert = self.putData(plainUrl, filename, self.mimeType, 'disk', keyType)
-                QThread.msleep(5000)
-                if insert.result is not None and 'ProtocolError' in str(insert.result):
-                    testDDAResult = False
-                    opener.close()
-
-        if not testDDAResult:
+            self.nodeManager.node.putQueueFile(plainUrl, keyType)
+        else:
             opener = buildOpener(self.url, self.proxy)
             u = opener.open(self.url)
             filename = os.path.basename(self.url)
             data = u.read() # we have to make this streaming in the future (pyFreenet can't handle it atm)
             u.close()
-            insert = self.putData(data, filename, self.mimeType, 'data', keyType)
-        self.quit() # because we put everything on node's global queue, we are not interested in what happens after put()
+            insert = self.nodeManager.node.putQueueData(data, keyType, TargetFilename=filename, MimeType=self.mimeType)
 
     def putData(self, data, filename, mime_type, method, keyType):
         #TODO: first check with fcp put method "disk" to check if we're on same machine as node or if node
