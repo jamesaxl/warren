@@ -211,7 +211,7 @@ class PutPaste(QThread):
             paste = highlight(paste, lexers.get_lexer_by_name(self.lexer), HtmlFormatter(encoding='utf-8',full=True,linenos=self.lineNos))
             mimeType = "text/html; charset=utf-8"
 
-        insert = self.node.put(keyType,paste,callback,async=async,name='pastebin',Verbosity=5,mimetype=mimeType,waituntilsent=True,priority=2,realtime=True)
+        insert = self.node.put(keyType,paste,callback,async=async,name='pastebin',Verbosity=5,Mimetype=mimeType,waituntilsent=True,priority=2,realtime=True)
         return insert
 
     def insertcb(self,val1,val2):
