@@ -40,6 +40,7 @@ class FCPNode(object):
         # no reply
 
     def putDirect(self, uri, content, callback, **kw):
+        """transient direct insert"""
         conn = self._getDefaultConnection()
         cmd = miniFCP.FCPCommand("ClientPut")
         cmd.setItem('Verbosity', -1)
@@ -66,6 +67,9 @@ class FCPNode(object):
         return None
 
     def putQueueFile(self, filename, uri, **kw):
+        """add a local file to global queue
+           TestDDA is transparently done if the node request it,
+           if the test fails it fallback to direct"""
         conn = self._getDefaultConnection()
         cmd = miniFCP.FCPCommand("ClientPut")
         cmd.setItem('Verbosity', -1)
@@ -144,6 +148,8 @@ class FCPNode(object):
         return msg.getValue('ReadDirectoryAllowed') == 'true'
 
     def putQueueData(self, data, uri, **kw):
+        """add data[] to global queue"""
+        # TODO stream the data, data[] is ugly on big files.
         conn = self._getDefaultConnection()
         cmd = miniFCP.FCPCommand("ClientPut")
         cmd.setItem('Verbosity', -1)
