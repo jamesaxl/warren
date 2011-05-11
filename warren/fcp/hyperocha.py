@@ -39,7 +39,7 @@ class FCPNode(object):
         conn.sendCommand(cmd)
         # no reply
 
-    def put(self, uri, content, callback, **kw):
+    def putDirect(self, uri, content, callback, **kw):
         conn = self._getDefaultConnection()
         cmd = miniFCP.FCPCommand("ClientPut")
         cmd.setItem('Verbosity', -1)
