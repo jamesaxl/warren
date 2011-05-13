@@ -168,12 +168,14 @@ class FCPConnection(FCPIOConnection):
 
         # check versions
         if not fcpargs.get('fcpnoversion', False):
+            reqversion = fcpargs.get('fcprequirednodeversion', REQUIRED_NODE_VERSION)
             version = msg.getIntValue("Build")
-            if version < REQUIRED_NODE_VERSION:
-                raise Exception("Node to old. Found %d, but need %d" % (version, REQUIRED_NODE_VERSION))
+            if version < reqversion:
+                raise Exception("Node to old. Found %d, but need %d" % (version, reqversion))
+            reqextversion = fcpargs.get('fcprequiredextversion', REQUIRED_EXT_VERSION)
             extversion = msg.getIntValue("ExtBuild")
-            if extversion < REQUIRED_EXT_VERSION:
-                raise Exception("Node-ext to old. Found %d, but need %d" % (extversion, REQUIRED_EXT_VERSION))
+            if extversion < reqextversion:
+                raise Exception("Node-ext to old. Found %d, but need %d" % (extversion, reqextversion))
 
     def sendCommand(self, command, data=None):
         if data is None:
