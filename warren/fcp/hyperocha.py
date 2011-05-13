@@ -65,7 +65,7 @@ class FCPNode(object):
 
         return None
 
-    def putQueueFile(self, filename, uri, **kw):
+    def putQueueFile(self, uri, filename, **kw):
         """add a local file to global queue
            TestDDA is transparently done if the node request it,
            if the test fails it fallback to direct"""
@@ -148,7 +148,7 @@ class FCPNode(object):
 
         return msg.getValue('ReadDirectoryAllowed') == 'true'
 
-    def putQueueData(self, data, uri, **kw):
+    def putQueueData(self, uri, data, **kw):
         """add data[] to global queue"""
         # TODO stream the data, data[] is ugly on big files.
         conn = self._getDefaultConnection()
