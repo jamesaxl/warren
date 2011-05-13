@@ -28,7 +28,7 @@ class FCPLogger(object):
     def write(self, line):
         self.logfile.write(line + '\n')
 
-# asynchronous stuff (single thread)
+# synchronous fcp stuff (single thread)
 class FCPIOConnection(object):
     """class for real i/o and format helpers"""
 
@@ -152,7 +152,18 @@ class FCPIOConnection(object):
         self.socket.sendall(data)
 
 class FCPConnection(FCPIOConnection):
-    """class for low level fcp protocol i/o"""
+    """ class for low level fcp protocol i/o
+
+        kwargs:
+            fcpname: client name
+            fcphost:
+            fcpport:
+            fcptimeout: tcp connection timeout
+            fcplogger: FCPLogger instance to log fcp traffic, defaults: None
+            fcpnoversion: if true the node version check is omitted
+            fcprequirednodeversion: minimum node version
+            fcprequiredextversion: minimum ext version
+    """
 
     def __init__(self, **fcpargs):
         """c'tor leaves a ready to use connection (hello done)"""
