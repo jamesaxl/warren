@@ -232,6 +232,14 @@ class FCPMessage(object):
     _messagename = ""
     _endmarker = ""
 
+    def __str__(self):
+        parts = []
+        parts.append(self._messagename)
+        for k in self._items:
+            parts.append(str("=".join([k, self._items[k]])))
+        parts.append(self._endmarker)
+        return "\n".join(parts) or "??"
+
     def __init__(self, messagename, items, endmarker):
         self._messagename = messagename
         self._endmarker = endmarker
