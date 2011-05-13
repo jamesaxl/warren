@@ -52,7 +52,7 @@ class FileInsert(QThread):
             filename = os.path.basename(self.url)
             data = u.read() # we have to make this streaming in the future (pyFreenet can't handle it atm)
             u.close()
-            insert = self.nodeManager.node.putQueueData(keyType, data, TargetFilename=filename, MimeType=self.mimeType)
+            insert = self.nodeManager.node.putQueueData(keyType, data, TargetFilename=filename, Mimetype=self.mimeType)
 
     def putData(self, data, filename, mime_type, method, keyType):
         #TODO: first check with fcp put method "disk" to check if we're on same machine as node or if node
