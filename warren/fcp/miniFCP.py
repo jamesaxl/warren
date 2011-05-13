@@ -4,7 +4,6 @@ import sys
 import threading
 import time
 
-REQUIRED_NODE_BUILD = -1
 REQUIRED_NODE_VERSION = 1373
 REQUIRED_EXT_VERSION = 29
 
@@ -172,15 +171,7 @@ class FCPConnection(FCPIOConnection):
         if not noversion:
             version = msg.getIntValue("Build")
             if version < REQUIRED_NODE_VERSION:
-                if version == (REQUIRED_NODE_VERSION-1):
-                    revision = msg.getValue("Revision")
-                    if not revision == '@custom@':
-                        revision = int(revision)
-                        if revision < REQUIRED_NODE_BUILD:
-                            raise Exception("Node to old. Found build %d, but need minimum build %d" % (revision, REQUIRED_NODE_BUILD))
-                else:
-                    raise Exception("Node to old. Found %d, but need %d" % (version, REQUIRED_NODE_VERSION))
-
+                raise Exception("Node to old. Found %d, but need %d" % (version, REQUIRED_NODE_VERSION))
             extversion = msg.getIntValue("ExtBuild")
             if extversion < REQUIRED_EXT_VERSION:
                 raise Exception("Node-ext to old. Found %d, but need %d" % (extversion, REQUIRED_EXT_VERSION))
