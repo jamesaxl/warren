@@ -4,6 +4,7 @@ import sys
 import threading
 import time
 
+REQUIRED_FCP_VERSION = "2.0"
 REQUIRED_NODE_VERSION = 1373
 REQUIRED_EXT_VERSION = 29
 
@@ -162,7 +163,7 @@ class FCPConnection(FCPIOConnection):
         """perform the initial FCP protocol handshake"""
         if name == None:
             name = _getUniqueId()
-        self._sendMessage("ClientHello", Name=name, ExpectedVersion="2.0")
+        self._sendMessage("ClientHello", Name=name, ExpectedVersion=REQUIRED_FCP_VERSION)
         msg = self.readEndMessage()
         if not msg.isMessageName("NodeHello"):
             raise Exception("Node helo failed: %s" % (msg.getMessageName()))
