@@ -1,6 +1,7 @@
 import miniFCP
 import os
 
+DEFAULT_CODEC = 'LZMA_NEW'
 class FCPNode(object):
 
 
@@ -44,6 +45,7 @@ class FCPNode(object):
         cmd.setItem('URI', "CHK@")
         cmd.setItem('MaxRetries', 3)
         cmd.setItem('DontCompress', 'false')
+        cmd.setItem('Codecs', DEFAULT_CODEC)
         cmd.setItem('PriorityClass', '1')
         cmd.setItem('Global', 'false')
         cmd.setItem('Persistence', 'connection')
@@ -73,6 +75,7 @@ class FCPNode(object):
         cmd.setItem('URI', "CHK@")
         cmd.setItem('MaxRetries', -1)
         cmd.setItem('DontCompress', 'false')
+        cmd.setItem('Codecs', DEFAULT_CODEC)
         cmd.setItem('PriorityClass', '1')
         cmd.setItem('Global', 'true')
         cmd.setItem('Persistence', 'forever')
@@ -154,6 +157,7 @@ class FCPNode(object):
         cmd.setItem('URI', "CHK@")
         cmd.setItem('MaxRetries', -1)
         cmd.setItem('DontCompress', 'false')
+        cmd.setItem('Codecs', DEFAULT_CODEC)
         cmd.setItem('PriorityClass', '1')
         cmd.setItem('Global', 'true')
         cmd.setItem('Persistence', 'forever')
