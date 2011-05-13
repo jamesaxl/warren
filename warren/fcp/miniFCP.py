@@ -210,13 +210,11 @@ class FCPConnection(FCPIOConnection):
 class FCPCommand(object):
     """class for client to node messages"""
 
-    def __init__(self, name, identifier=None):
+    def __init__(self, name, **cmdargs):
         self._name = name
-        self._items = {}
-        if None == identifier:
+        self._items = cmdargs
+        if 'Identifier' not in self._items:
             self._items['Identifier'] = _getUniqueId()
-        else:
-            self._items['Identifier'] = identifier
 
     def getCommandName(self):
         return self._name
