@@ -28,6 +28,13 @@ class FCPLogger(object):
     def write(self, line):
         self.logfile.write(line + '\n')
 
+#exceptions
+class ConnectionRefused(Exception):
+    """cannot connect to given host/port"""
+
+class FCPException(Exception):
+    """fcp error"""
+
 # synchronous fcp stuff (single thread)
 class FCPIOConnection(object):
     """class for real i/o and format helpers"""
@@ -43,7 +50,7 @@ class FCPIOConnection(object):
         try:
             self.socket.connect((host, port))
         except Exception, e:
-            raise Exception("Failed to connect to %s:%s - %s" % (host, port, e))
+            raise ConnectionRefused("Failed to connect to %s:%s - %s" % (host, port, e))
         if (None != self._logger):
             self._logger.write("init: connected to %s:%s (timeout %d s)" % (host, port, timeout))
 
@@ -63,7 +70,7 @@ class FCPIOConnection(object):
                     break
                 buf.append(c)
             else:
-                raise Exception("FCP socket closed by node")
+                raise FCPException("FCP socket closed by node")
         ln = "".join(buf)
         return ln
 
@@ -76,7 +83,7 @@ class FCPIOConnection(object):
             if chunk:
                 chunks.append(chunk)
             else:
-                raise Exception("FCP socket closed by node")
+                raise FCPException("FCP socket closed by node")
             remaining -= chunklen
         buf = "".join(chunks)
         if (None != self._logger):
@@ -89,7 +96,7 @@ class FCPIOConnection(object):
             chunk = self.socket.recv(remaining)
             chunklen = len(chunk)
             if not chunk:
-                raise Exception("FCP socket closed by node")
+                raise FCPException("FCP socket closed by node")
             remaining -= chunklen
         if (None != self._logger):
             self._logger.write("in: <"+str(n)+" Bytes of data skipped>")
@@ -175,18 +182,18 @@ class FCPConnection(FCPIOConnection):
         self._sendMessage("ClientHello", Name=fcpargs.get('fcpname', _getUniqueId()), ExpectedVersion=REQUIRED_FCP_VERSION)
         msg = self.readEndMessage()
         if not msg.isMessageName("NodeHello"):
-            raise Exception("Node helo failed: %s" % (msg.getMessageName()))
+            raise FCPException("Node helo failed: %s" % (msg.getMessageName()))
 
         # check versions
         if not fcpargs.get('fcpnoversion', False):
             reqversion = fcpargs.get('fcprequirednodeversion', REQUIRED_NODE_VERSION)
             version = msg.getIntValue("Build")
             if version < reqversion:
-                raise Exception("Node to old. Found %d, but need %d" % (version, reqversion))
+                raise FCPException("Node to old. Found %d, but need %d" % (version, reqversion))
             reqextversion = fcpargs.get('fcprequiredextversion', REQUIRED_EXT_VERSION)
             extversion = msg.getIntValue("ExtBuild")
             if extversion < reqextversion:
-                raise Exception("Node-ext to old. Found %d, but need %d" % (extversion, reqextversion))
+                raise FCPException("Node-ext to old. Found %d, but need %d" % (extversion, reqextversion))
 
     def sendCommand(self, command, data=None):
         if data is None:
