@@ -78,7 +78,8 @@ class FCPNode(object):
         cmd.setItem('Persistence', 'forever')
         cmd.setItem("UploadFrom", "disk")
         cmd.setItem("Filename", filename)
-        #cmd.setItem("Metadata.ContentType", "text/plain;  charset=utf-8")
+        if kw.has_key('Mimetype'):
+            cmd.setItem("Metadata.ContentType", kw['Mimetype'])
         cmd.setItem("RealTimeFlag", "true")
         #cmd.setItem("TargetFilename", "pastetebin")
         conn.sendCommand(cmd)
@@ -158,7 +159,8 @@ class FCPNode(object):
         cmd.setItem('Persistence', 'forever')
         cmd.setItem("UploadFrom", "direct")
         cmd.setItem("DataLength", str(len(data)))
-        #cmd.setItem("Metadata.ContentType", "text/plain;  charset=utf-8")
+        if kw.has_key('Mimetype'):
+            cmd.setItem("Metadata.ContentType", kw['Mimetype'])
         cmd.setItem("RealTimeFlag", "true")
         #cmd.setItem("TargetFilename", "pastetebin")
         conn.sendCommand(cmd, data)
