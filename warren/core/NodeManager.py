@@ -38,7 +38,7 @@ class NodeManager(QThread):
 
     def connectNode(self):
         try:
-            self.node = FCPNode(name="WarrenClient",host=self.config['node']['host'],port=int(self.config['node']['fcp_port']))
+            self.node = FCPNode(fcpname="WarrenClient",fcphost=self.config['node']['host'],fcpport=int(self.config['node']['fcp_port']))
             self.updateNodeConfigValues()
             self.emit(SIGNAL("nodeConnected()"))
         except Exception, e:

@@ -3,19 +3,16 @@ import os
 
 class FCPNode(object):
 
-    _defaultConnection = None
 
-    def __init__(self, name, host=miniFCP.DEFAULT_FCP_HOST, port=miniFCP.DEFAULT_FCP_PORT, to=miniFCP.DEFAULT_FCP_TIMEOUT, log=None, noversion=False):
-        self.name = name
-        self.host = host
-        self.port = port
-        self.to = to
-        self.log = miniFCP.FCPLogger()
-        self.noversion = noversion
+    def __init__(self, **fcpargs):
+        self._fcpargs = fcpargs
+        #hack: force fcp logging. useful at this early stage
+        self._fcpargs['fcplogger'] = miniFCP.FCPLogger()
+        self._defaultConnection = None
 
     def _getDefaultConnection(self):
-        if self._defaultConnection == None:
-            self._defaultConnection = miniFCP.FCPConnection(self.host, self.port, self.to, self.name, self.log, self.noversion)
+        if not self._defaultConnection:
+            self._defaultConnection = miniFCP.FCPConnection(**self._fcpargs)
         return self._defaultConnection
 
     def setFCPLogger(self, log=None):

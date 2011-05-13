@@ -32,14 +32,14 @@ class FCPLogger(object):
 class FCPIOConnection(object):
     """class for real i/o and format helpers"""
 
-    def __init__(self, host, port, timeout, logger=None):
-        self._logger = logger
-        socket.setdefaulttimeout(timeout)
+    def __init__(self, **fcpargs):
+        host = fcpargs.get('fcphost', DEFAULT_FCP_HOST)
+        port = fcpargs.get('fcpport', DEFAULT_FCP_PORT)
+        timeout = fcpargs.get('fcptimeout', DEFAULT_FCP_TIMEOUT)
+        self._logger = fcpargs.get('fcplogger', None)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
         self.socket.settimeout(timeout)
-        #self.socket.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
-        print self.socket.gettimeout()
-        print socket.getdefaulttimeout()
         try:
             self.socket.connect((host, port))
         except Exception, e:
@@ -154,22 +154,20 @@ class FCPIOConnection(object):
 class FCPConnection(FCPIOConnection):
     """class for low level fcp protocol i/o"""
 
-    def __init__(self, host, port, timeout, name=None, logger=None, noversion=False):
+    def __init__(self, **fcpargs):
         """c'tor leaves a ready to use connection (hello done)"""
-        FCPIOConnection.__init__(self, host, port, timeout, logger)
-        self._helo(name, noversion)
+        FCPIOConnection.__init__(self, **fcpargs)
+        self._helo(**fcpargs)
 
-    def _helo(self, name, noversion):
+    def _helo(self, **fcpargs):
         """perform the initial FCP protocol handshake"""
-        if name == None:
-            name = _getUniqueId()
-        self._sendMessage("ClientHello", Name=name, ExpectedVersion=REQUIRED_FCP_VERSION)
+        self._sendMessage("ClientHello", Name=fcpargs.get('fcpname', _getUniqueId()), ExpectedVersion=REQUIRED_FCP_VERSION)
         msg = self.readEndMessage()
         if not msg.isMessageName("NodeHello"):
             raise Exception("Node helo failed: %s" % (msg.getMessageName()))
 
         # check versions
-        if not noversion:
+        if not fcpargs.get('fcpnoversion', False):
             version = msg.getIntValue("Build")
             if version < REQUIRED_NODE_VERSION:
                 raise Exception("Node to old. Found %d, but need %d" % (version, REQUIRED_NODE_VERSION))
