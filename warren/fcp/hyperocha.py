@@ -41,12 +41,12 @@ class FCPNode(object):
         """transient direct insert"""
         conn = self._getDefaultConnection()
         cmd = miniFCP.FCPCommand("ClientPut")
-        cmd.setItem('Verbosity', -1)
-        cmd.setItem('URI', "CHK@")
-        cmd.setItem('MaxRetries', 3)
+        cmd.setItem('URI', uri)
+        cmd.setItem('Verbosity', kw.get('Verbosity', -1))
+        cmd.setItem('MaxRetries', kw.get('MaxRetries', 3))
         cmd.setItem('DontCompress', 'false')
         cmd.setItem('Codecs', DEFAULT_CODEC)
-        cmd.setItem('PriorityClass', '1')
+        cmd.setItem('PriorityClass', kw.get('PriorityClass', 1))
         cmd.setItem('Global', 'false')
         cmd.setItem('Persistence', 'connection')
         cmd.setItem("UploadFrom", "direct")
@@ -54,7 +54,8 @@ class FCPNode(object):
         if kw.has_key('Mimetype'):
             cmd.setItem("Metadata.ContentType", kw['Mimetype'])
         cmd.setItem("RealTimeFlag", "true")
-        cmd.setItem("TargetFilename", "pastetebin")
+        if kw.has_key('TargetFilename'):
+            cmd.setItem("TargetFilename", kw['TargetFilename'])
         conn.sendCommand(cmd, content)
 
         while True:
@@ -71,20 +72,21 @@ class FCPNode(object):
            if the test fails it fallback to direct"""
         conn = self._getDefaultConnection()
         cmd = miniFCP.FCPCommand("ClientPut")
-        cmd.setItem('Verbosity', -1)
-        cmd.setItem('URI', "CHK@")
-        cmd.setItem('MaxRetries', -1)
+        cmd.setItem('URI', uri)
+        cmd.setItem('Verbosity', kw.get('Verbosity', -1))
+        cmd.setItem('MaxRetries', kw.get('MaxRetries', 3))
         cmd.setItem('DontCompress', 'false')
         cmd.setItem('Codecs', DEFAULT_CODEC)
-        cmd.setItem('PriorityClass', '1')
+        cmd.setItem('PriorityClass', kw.get('PriorityClass', 4))
         cmd.setItem('Global', 'true')
         cmd.setItem('Persistence', 'forever')
         cmd.setItem("UploadFrom", "disk")
         cmd.setItem("Filename", filename)
         if kw.has_key('Mimetype'):
             cmd.setItem("Metadata.ContentType", kw['Mimetype'])
+        if kw.has_key('TargetFilename'):
+            cmd.setItem("TargetFilename", kw['TargetFilename'])
         cmd.setItem("RealTimeFlag", "true")
-        #cmd.setItem("TargetFilename", "pastetebin")
         conn.sendCommand(cmd)
 
         msg = conn.readEndMessage()
@@ -105,11 +107,14 @@ class FCPNode(object):
         if isDDA:
             conn.sendCommand(cmd)
         else:
+            # TODO stream the file
             f = open(filename, 'r')
             c = f.read()
             f.close()
+            fname = os.path.split(filename)[0]
             cmd.setItem("UploadFrom", "direct")
             cmd.setItem("DataLength", str(len(c)))
+            cmd.setItem("TargetFilename", kw.get('TargetFilename', os.path.basename(filename)))
             conn.sendCommand(cmd, c)
 
         return None
@@ -153,12 +158,12 @@ class FCPNode(object):
         # TODO stream the data, data[] is ugly on big files.
         conn = self._getDefaultConnection()
         cmd = miniFCP.FCPCommand("ClientPut")
-        cmd.setItem('Verbosity', -1)
-        cmd.setItem('URI', "CHK@")
-        cmd.setItem('MaxRetries', -1)
+        cmd.setItem('URI', uri)
+        cmd.setItem('Verbosity', kw.get('Verbosity', -1))
+        cmd.setItem('MaxRetries', kw.get('MaxRetries', -1))
         cmd.setItem('DontCompress', 'false')
         cmd.setItem('Codecs', DEFAULT_CODEC)
-        cmd.setItem('PriorityClass', '1')
+        cmd.setItem('PriorityClass', kw.get('PriorityClass', 4))
         cmd.setItem('Global', 'true')
         cmd.setItem('Persistence', 'forever')
         cmd.setItem("UploadFrom", "direct")
@@ -166,7 +171,8 @@ class FCPNode(object):
         if kw.has_key('Mimetype'):
             cmd.setItem("Metadata.ContentType", kw['Mimetype'])
         cmd.setItem("RealTimeFlag", "true")
-        #cmd.setItem("TargetFilename", "pastetebin")
+        if kw.has_key('TargetFilename'):
+            cmd.setItem("TargetFilename", kw['TargetFilename'])
         conn.sendCommand(cmd, data)
 
         while True:
