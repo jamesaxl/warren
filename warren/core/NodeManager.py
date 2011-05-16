@@ -13,7 +13,8 @@ from pygments.formatters import HtmlFormatter
 
 SECLEVELS = {'LOW':0, 'NORMAL':1, 'HIGH':2, 'MAXIMUM':3}
 
-WARREN_DEFAULT_WATCHDOG_DELAY = 10000
+WARREN_DEFAULT_WATCHDOG_STARTUP_DELAY = 10000
+WARREN_DEFAULT_WATCHDOG_DELAY = 1000
 WARREN_DEFAULT_TIMEOUT = 5000
 
 class NodeManager(QThread):
@@ -219,15 +220,20 @@ class PutPaste(QThread):
 
 class NodeWatchdog(QThread):
 
+    _ticks = 0
+
     def __init__(self,nodeManager):
         QThread.__init__(self, None)
         self.nodeManager = nodeManager
         self.start()
 
     def run(self):
-        QThread.msleep(WARREN_DEFAULT_WATCHDOG_DELAY) # on startup wait additional 10 seconds
+        QThread.msleep(WARREN_DEFAULT_WATCHDOG_STARTUP_DELAY) # on startup wait additional 10 seconds
         while(True):
-            QThread.msleep(WARREN_DEFAULT_TIMEOUT)
+            _ticks =+ WARREN_DEFAULT_WATCHDOG_DELAY
+            QThread.msleep(WARREN_DEFAULT_WATCHDOG_DELAY)
+            if self._ticks < WARREN_DEFAULT_TIMEOUT:
+                continue
             try:
                 self.nodeManager.node.ping('warren_ping')
                 isOK=True
@@ -237,3 +243,5 @@ class NodeWatchdog(QThread):
             if not isOK:
                 self.emit(SIGNAL("nodeNotConnected()"))
 
+    def reset(self):
+        _ticks = 0
