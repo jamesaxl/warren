@@ -29,7 +29,7 @@ class FCPLogger(object):
         self.logfile.write(line + '\n')
 
 #exceptions
-class ConnectionRefused(Exception):
+class FCPConnectionRefused(Exception):
     """cannot connect to given host/port"""
 
 class FCPException(Exception):
@@ -50,7 +50,7 @@ class FCPIOConnection(object):
         try:
             self.socket.connect((host, port))
         except Exception, e:
-            raise ConnectionRefused("Failed to connect to %s:%s - %s" % (host, port, e))
+            raise FCPConnectionRefused("Failed to connect to %s:%s - %s" % (host, port, e))
         if (None != self._logger):
             self._logger.write("init: connected to %s:%s (timeout %d s)" % (host, port, timeout))
 
