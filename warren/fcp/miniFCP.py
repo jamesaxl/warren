@@ -4,6 +4,7 @@ import sys
 import threading
 import time
 
+# defaults
 REQUIRED_FCP_VERSION = "2.0"
 REQUIRED_NODE_VERSION = 1373
 REQUIRED_EXT_VERSION = 29
@@ -164,7 +165,7 @@ class FCPIOConnection(object):
         self.socket.sendall(data)
 
 class FCPConnection(FCPIOConnection):
-    """ class for low level fcp protocol i/o
+    """class for low level fcp protocol i/o
 
         kwargs:
             fcpname: client name
@@ -189,7 +190,7 @@ class FCPConnection(FCPIOConnection):
         if not msg.isMessageName("NodeHello"):
             raise FCPException("Node helo failed: %s" % (msg.getMessageName()))
 
-        # check versions
+        # check node version
         if not fcpargs.get('fcpnoversion', False):
             reqversion = fcpargs.get('fcprequirednodeversion', REQUIRED_NODE_VERSION)
             version = msg.getIntValue("Build")
@@ -273,7 +274,7 @@ class FCPMessage(object):
     def isDataCarryingMessage(self):
         return self._endmarker == "DATA"
 
-# asynchronous stuff (thread save)
+# asynchronous fcp stuff (thread save)
 
 class FCPConnectionRunner(threading.Thread):
     """class for send/recive FCP commands asynchronly"""
@@ -301,7 +302,7 @@ class FCPJob(object):
     """abstract class for asynchronous jobs, they may use more then one fcp command and/or interact with the node in a complex manner"""
 
 class FCPSession(object):
-    """class for managing/running FCPJobs on a single connection"""
+    """class for managing/running FCPJobs"""
 
     def start(self):
         pass
