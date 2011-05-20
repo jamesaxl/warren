@@ -101,6 +101,11 @@ class FCPIOConnection(object):
         if (None != self._logger):
             self._logger.write("in: <"+str(n)+" Bytes of data skipped>")
 
+    def close(self):
+        if (None != self._logger):
+            self._logger.write("init: closing connection")
+        self.socket.close()
+
     def readEndMessage(self):
         #the first line is the message name
         messagename = self._readline()
