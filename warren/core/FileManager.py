@@ -27,7 +27,6 @@ def checkFileForInsert(mimeData, proxy=None):
     except: # TODO make this nicer
         return False
 
-
 class FileInsert(QThread):
 
     def __init__(self, parent, url, mimeType, proxy=None):
@@ -38,13 +37,10 @@ class FileInsert(QThread):
         self.proxy = proxy
 
     def run(self):
-        # Grade-A fugly workaround ahead! pyFreenet can't handle failing testDDARequests, because FCP doesn't work with Identifiers
-        # in this request. So failing DDA jobs die. This is a trial-and-error workaround to see if we can upload the file from 
-        # disk or if we have to send it over socket.
-        # TODO GET RID OF PYFREENET or tell toad_ to fix testDDARequest!!!!!!
         keyType = self.nodeManager.config['warren']['file_keytype']
-        if self.url[:4] == 'file':
-            plainUrl = self.url[7:]
+        tmpReq = urllib2.Request(self.url)
+        if tmpReq.get_type() == 'file':
+            plainUrl = tmpReq.get_selector()
             self.nodeManager.node.putQueueFile(keyType, plainUrl)
         else:
             opener = buildOpener(self.url, self.proxy)
@@ -53,18 +49,4 @@ class FileInsert(QThread):
             data = u.read() # we have to make this streaming in the future (pyFreenet can't handle it atm)
             u.close()
             insert = self.nodeManager.node.putQueueData(keyType, data, TargetFilename=filename, Mimetype=self.mimeType)
-
-    def putData(self, data, filename, mime_type, method, keyType):
-        #TODO: first check with fcp put method "disk" to check if we're on same machine as node or if node
-        #      has different permissions on selected file.
-        #      only if node answer with error on method "disk", fall back to method "direct"
-        #      AND WHY THE FUCK BLOCKS PYFREENET THE WHOLE PROGRAM WHILE UPLOADING EVEN IF IT RUNS IN THREAD???
-        if method == 'data':
-            return self.nodeManager.node.put(uri=keyType,data=data,async=True,name=filename,persistence='forever',Global=True,id='Warren-'+filename,mimetype=mime_type,waituntilsent=True)
-        if method == 'disk':
-            return self.nodeManager.node.put(uri=keyType,file=data,async=True,name=filename,persistence='forever',Global=True,id='Warren-'+filename,mimetype=mime_type,waituntilsent=True)
-
-
-
-
 

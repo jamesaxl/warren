@@ -1,8 +1,10 @@
 import random
 import socket
 import sys
-import threading
+from threading import Event, Lock, Thread
 import time
+if __debug__:
+    import traceback
 
 # defaults
 REQUIRED_FCP_VERSION = "2.0"
@@ -25,7 +27,7 @@ class FCPLogger(object):
 
     def __init__(self, filename=None):
         self.logfile = sys.stdout
-    
+
     def write(self, line):
         self.logfile.write(line + '\n')
 
@@ -276,32 +278,172 @@ class FCPMessage(object):
 
 # asynchronous fcp stuff (thread save)
 
-class FCPConnectionRunner(threading.Thread):
+class FCPConnectionRunner(Thread):
     """class for send/recive FCP commands asynchronly"""
 
-    _fcp_conn = None
-    _cb = None
+    def __init__(self, cb, **kwargs):
+        Thread.__init__(self)
+        self.setDaemon(True)
+        self._fcp_conn = None
+        self._fcpargs = kwargs
+        self._cb = cb
+        self._wLock = Lock()
+        self._ev = Event()
+
+    def start(self):
+        Thread.start(self)
+        self._ev.wait()
 
     def run(self):
-        self._fcp_conn = FCPConnection()
+        try:
+            self._fcp_conn = FCPConnection(**self._fcpargs)
+        except Exception, e:
+            if __debug__:
+                traceback.print_exc()
+        finally:
+            self._ev.set()
 
-        while true:
+        while self._fcp_conn:
             msg = self._fcp_conn.readEndMessage()
+            if msg.isMessageName('CloseConnectionDuplicateClientName'):
+                self.close()
             if msg.isDataCarryingMessage():
-                self._cb.onDataMessage(msg)
+                self._cb.onDataMessage(msg, self._fcp_conn)
             else:
                 self._cb.onMessage(msg)
 
     def close(self):
-        self._fcp_conn.close();
+        """close the connection. think kill -9 ;)"""
+        try:
+            self._fcp_conn.close();
+        finally:
+            self._fcp_conn = None
 
-    def send(self, msg, data=None):
-        self._fcp_conn.sendCommand(msg, data)
+    def shutDown(self):
+        """close the connection softly"""
+        self._wLock.acquire();
+        try:
+            self._fcp_conn.close();
+        finally:
+            self._fcp_conn = None
+            self._wLock.release();
 
-class FCPJob(object):
+    def sendCommand(self, msg, data=None):
+        self._wLock.acquire();
+        try:
+            self._fcp_conn.sendCommand(msg, data)
+        finally:
+            self._wLock.release();
+
+class FCPJob(Thread):
     """abstract class for asynchronous jobs, they may use more then one fcp command and/or interact with the node in a complex manner"""
 
-class FCPSession(object):
+    def __init__(self, identifier=None):
+        Thread.__init__(self)
+        self._lastError = None
+        self._lastErrorMessage = None
+        self._waitEvent = Event()
+        self._ConnectionRunner = None
+        self._JobRunner = None
+        if not identifier:
+            self._identifier = _getUniqueId()
+        else:
+            self._identifier = identifier
+
+    def getJobIdentifier(self):
+        return self._identifier
+
+    def prepare(self):
+        """overwrite this for job preparation, collect data/files etc pp"""
+        pass
+
+    def getFCPCommand(self):
+        raise NotImplementedError()
+
+    def onMessage(self, msg):
+        print self.__class__.__name__, "got a msg but did not deal with it:\n", str(msg)
+
+    def runFCP(self):
+        self.prepare()
+        cmd, data = self.getFCPCommand()
+        self._ConnectionRunner.sendCommand(cmd, data)
+
+    def waitForDone(self):
+        self._waitEvent.wait()
+
+    def setError(self, e):
+        self._lastError = e
+        self._waitEvent.set()
+
+    def setErrorMessage(self, msg):
+        self._lastErrorMessage = msg
+        self._waitEvent.set()
+
+    def setSuccess(self):
+        self._lastError = None
+        self._lastErrorMessage = None
+        self._waitEvent.set()
+
+    def isSuccess(self):
+        return ((not self._lastError) and (not self._lastErrorMessage))
+
+    def makeFCPCommand(self, name, **kwargs):
+        cmd = FCPCommand(name, **kwargs)
+        cmd.setItem('Identifier', self.getJobIdentifier())
+        return cmd
+
+    def run(self):
+        try:
+            self.runFCP()
+        except Exception, e:
+            if __debug__:
+                traceback.print_exc()
+            self._ConnectionRunner = None
+            self.setError(e)
+
+class FCPJobRunner(object):
+    """abstract class for execute jobs asynchronously"""
+
+    def __init__(self):
+        # map identifier -> job
+        self._jobs = {}
+
+    def _registerJob(self, id, job):
+        self._jobs[id] = job
+
+    def _unregisterJob(self, jobID):
+        self._jobs.pop(jobID)
+
+    def onMessage(self, msg):
+        id = None
+        try:
+            id = msg.getValue('Identifier')
+        except KeyError, ke:
+            if msg.isMessageName(['TestDDAReply', 'TestDDAComplete']):
+                id = msg.getValue('Directory')
+            else:
+                raise ke
+        job = self._jobs.get(id)
+        if job:
+            job.onMessage(msg)
+        else:
+            self.onUnhandledMessage(msg)
+
+    def runJob(self, job):
+        """execute a job blocking. does not return until job is done"""
+        self.startJob(job)
+        job.waitForDone()
+        self._unregisterJob(job.getJobIdentifier())
+
+    def startJob(self, job):
+        """queue a job for execution and return imadently"""
+        cr = self.getConnectionRunner(job.getJobIdentifier())
+        job._JobRunner = self
+        job._ConnectionRunner = cr
+        self._registerJob(job.getJobIdentifier(), job)
+        job.start()
+
+class FCPSession(FCPJobRunner):
     """class for managing/running FCPJobs"""
 
     def start(self):

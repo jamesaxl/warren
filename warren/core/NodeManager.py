@@ -1,15 +1,18 @@
 from PyQt4.QtCore import QThread, SIGNAL, QString, pyqtSignal
 from PyQt4.QtGui import QDialog, QClipboard, qApp
 from warren.fcp.hyperocha import FCPNode
+from warren.fcp.miniFCP import FCPConnectionRefused, FCPException
 from warren.ui.FileSent import Ui_fileDroppedDialog
 from warren.ui.PasteInsert import Ui_PasteInsertDialog
 import FileManager
 import os.path
 
+if __debug__:
+    import traceback
+
 from pygments import highlight
 from pygments import lexers
 from pygments.formatters import HtmlFormatter
-
 
 SECLEVELS = {'LOW':0, 'NORMAL':1, 'HIGH':2, 'MAXIMUM':3}
 
@@ -33,8 +36,8 @@ class NodeManager(QThread):
 
     def run(self):
         QThread.msleep(1000) # wait a second or sometimes signals can't get through right after startup
-        self.connectNode()
         self.watchdog = NodeWatchdog(self)
+        self.connectNode()
         self.connect(self.watchdog, SIGNAL("nodeNotConnected()"), self.nodeNotConnected)
 
     def connectNode(self):
@@ -42,17 +45,40 @@ class NodeManager(QThread):
             self.node = FCPNode(fcpname="WarrenClient",fcphost=self.config['node']['host'],fcpport=int(self.config['node']['fcp_port']))
             self.updateNodeConfigValues()
             self.emit(SIGNAL("nodeConnected()"))
+        except FCPConnectionRefused, e:
+            if __debug__:
+                traceback.print_exc()
+            # TODO tell the user that host/port is wrong (no TCP connect)
+            self.node = None
+        except FCPException, e:
+            if __debug__:
+                traceback.print_exc()
+            # TODO tell the user that host/port can be connected, but something
+            # else is wrong. Maybe not a FCP 2.0 server?
+            self.node = None
         except Exception, e:
-            print e
+            if __debug__:
+                print "somthing unexpected went wrong. BUG?"
+                traceback.print_exc()
+            # TODO tell the user that something unexpected went wrong. Bug?
             self.node = None
 
     def updateNodeConfigValues(self):
-        nconfig = self.node.getConfig(WithCurrent=True,WithExpertFlag=True)
-        self.physicalSeclevel = SECLEVELS[nconfig.getValue('current.security-levels.physicalThreatLevel')]
-        self.nodeDownloadDir = nconfig.getValue('current.node.downloadsDir')
-        self.downloadDDA = nconfig.getValue('expertFlag.fcp.assumeDownloadDDAIsAllowed')=='true'
-        if not os.path.isabs(self.nodeDownloadDir):
-            self.nodeDownloadDir = os.path.join(nconfig.getValue('current.node.cfgDir'), self.nodeDownloadDir)
+        isOK, nconfig, errmsg = self.node.getConfig(WithCurrent=True,WithExpertFlag=True)
+        if isOK:
+            self.physicalSeclevel = SECLEVELS[nconfig['current.security-levels.physicalThreatLevel']]
+            self.nodeDownloadDir = nconfig['current.node.downloadsDir']
+            self.downloadDDA = nconfig['expertFlag.fcp.assumeDownloadDDAIsAllowed']=='true'
+            if not os.path.isabs(self.nodeDownloadDir):
+                self.nodeDownloadDir = os.path.join(nconfig['current.node.cfgDir'], self.nodeDownloadDir)
+        else:
+            # getconfig failed. One of the booth values is set:
+            # nconfig - the exception causing failure or None (Exception)
+            # errmsg - the failure message from node or None (miniFCP.FCPMessage)
+            if nconfig:
+                raise nconfing
+            else:
+                raise Exception(str(errmsg))
 
     def nodeNotConnected(self):
         self.emit(SIGNAL("nodeConnectionLost()"))
@@ -83,8 +109,6 @@ class NodeManager(QThread):
         else:
             self.node.get(key,async=True, Global=True, persistence='forever',priority=4, id='Warren:'+key.split('/')[-1])
 
-
-
     def pasteCanceled(self):
         if hasattr(self, 'pasteInsert'):
             # TODO cancel request in node, too (FCP message "RemoveRequest")
@@ -103,7 +127,6 @@ class NodeManager(QThread):
         self.pasteInsertDialog.ui.buttonBox.rejected.connect(self.pasteCanceled)
 
         self.pasteInsert.start()
-
 
     def pasteMessageForwarder(self, msg):
         self.emit(SIGNAL("inserterMessage(QString)"),QString(msg))
@@ -162,6 +185,13 @@ class PasteInsert(QDialog):
             self.ui.buttonBox.buttons()[1].setEnabled(False)
             self.ui.keyLineEdit.setCursorPosition(0)
             self.pasteFinished.emit()
+        elif val1=='FinishedCompression':
+            # TODO compression done
+            pass
+        elif val1=='PutFetchable':
+            # TODO it may be ok to canel the insert, it should be still fetchable
+            # tell the user
+            pass
         else:
             print "unhandled message "+val1
 
@@ -200,8 +230,7 @@ class PutPaste(QThread):
 
     def run(self):
         keyType = self.nodeManager.config['warren']['pastebin_keytype']
-        insert = self.putPaste(self.paste, self.insertcb, async=True, keyType=keyType)
-        #insert.wait()
+        self.putPaste(self.paste, self, async=True, keyType=keyType)
 
     def putPaste(self, qPaste, callback, async=True, keyType='SSK@'):
         paste = unicode(qPaste)
@@ -212,11 +241,28 @@ class PutPaste(QThread):
             paste = highlight(paste, lexers.get_lexer_by_name(self.lexer), HtmlFormatter(encoding='utf-8',full=True,linenos=self.lineNos))
             mimeType = "text/html; charset=utf-8"
 
-        insert = self.node.putDirect(keyType,paste,callback,TargetFilename='pastebin',Verbosity=5,Mimetype=mimeType,PriorityClass=2)
-        return insert
+        self.node.putDirect(keyType,paste,callback,TargetFilename='pastebin',Verbosity=5,Mimetype=mimeType,PriorityClass=2)
 
-    def insertcb(self,val1,val2):
-        self.message.emit([val1,val2])
+    def insertcb(self,msg):
+        self.message.emit([msg.getMessageName(),msg])
+
+    def onSimpleProgress(self, msg):
+        self.insertcb(msg)
+
+    def onURIGenerated(self, msg):
+        self.insertcb(msg)
+
+    def onSuccess(self, msg):
+        self.insertcb(msg)
+
+    def onFailure(self, msg):
+        self.insertcb(msg)
+
+    def onFinishedCompression(self, msg):
+        self.insertcb(msg)
+
+    def onPutFetchable(self, msg):
+        self.insertcb(msg)
 
 class NodeWatchdog(QThread):
 
