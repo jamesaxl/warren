@@ -27,11 +27,11 @@ class Clipboard(QWidget):
 
         cb = self.clip.mimeData()
         if cb.hasText():
-            self.findKeys(unicode(cb.text()).encode('utf-8'))
+            self.findKeys(str(cb.text()).encode('utf-8'))
 
     def selChanged(self):
 
-        text = unicode(self.clip.text("plain",QClipboard.Selection)).encode('utf-8')
+        text = str(self.clip.text("plain",QClipboard.Selection)).encode('utf-8')
         self.findKeys(text)
 
     def findKeys(self, text):

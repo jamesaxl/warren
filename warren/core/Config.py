@@ -32,12 +32,12 @@ class Config(ConfigObj):
             self.write()
         else:
             self.reload()
-            for section, value in CONFIG_DEFAULTS.iteritems():
+            for section, value in CONFIG_DEFAULTS.items():
                 if not self.get(section):
                     self[section] = value
                     continue
                 if type(value) == type(dict()):
-                    for subsection, subvalue in value.iteritems():
+                    for subsection, subvalue in value.items():
                         if not self[section].get(subsection):
                             self[section][subsection] = subvalue
 

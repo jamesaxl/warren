@@ -1,5 +1,5 @@
 from PyQt4.QtGui import QDialog
-from SettingsDialog import Ui_SettingsDialog
+from .SettingsDialog import Ui_SettingsDialog
 
 class Settings(QDialog):
 

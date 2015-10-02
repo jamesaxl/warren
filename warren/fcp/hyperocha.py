@@ -1,4 +1,4 @@
-import miniFCP
+from . import miniFCP
 import os
 
 DEFAULT_CODEC = 'LZMA_NEW'
@@ -69,10 +69,10 @@ class PutDirectJob(miniFCP.FCPJob):
         cmd.setItem('Persistence', 'connection')
         cmd.setItem("UploadFrom", "direct")
         cmd.setItem("DataLength", str(len(self._content)))
-        if self._cmdargs.has_key('Mimetype'):
+        if 'Mimetype' in self._cmdargs:
             cmd.setItem("Metadata.ContentType", self._cmdargs['Mimetype'])
         cmd.setItem("RealTimeFlag", "true")
-        if self._cmdargs.has_key('TargetFilename'):
+        if 'TargetFilename' in self._cmdargs:
             cmd.setItem("TargetFilename", self._cmdargs['TargetFilename'])
         return cmd, self._content
 
@@ -101,10 +101,10 @@ class PutQueueDirectJob(miniFCP.FCPJob):
         cmd.setItem('Persistence', 'forever')
         cmd.setItem("UploadFrom", "direct")
         cmd.setItem("DataLength", str(len(self._content)))
-        if self._cmdargs.has_key('Mimetype'):
+        if 'Mimetype' in self._cmdargs:
             cmd.setItem("Metadata.ContentType", self._cmdargs['Mimetype'])
         cmd.setItem("RealTimeFlag", "true")
-        if self._cmdargs.has_key('TargetFilename'):
+        if 'TargetFilename' in self._cmdargs:
             cmd.setItem("TargetFilename", self._cmdargs['TargetFilename'])
         return cmd, self._content
 
@@ -185,9 +185,9 @@ class PutQueueFileJob(DDATestJob):
             self._fcpcmd.setItem('Persistence', 'forever')
             self._fcpcmd.setItem("UploadFrom", "disk")
             self._fcpcmd.setItem("Filename", self._filename)
-            if self._cmdargs.has_key('Mimetype'):
+            if 'Mimetype' in self._cmdargs:
                 self._fcpcmd.setItem("Metadata.ContentType", self._cmdargs['Mimetype'])
-            if self._cmdargs.has_key('TargetFilename'):
+            if 'TargetFilename' in self._cmdargs:
                 self._fcpcmd.setItem("TargetFilename", self._cmdargs['TargetFilename'])
             self._fcpcmd.setItem("RealTimeFlag", "true")
         return self._fcpcmd, None

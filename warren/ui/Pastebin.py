@@ -1,6 +1,6 @@
 from PyQt4.QtGui import QDialog
 from PyQt4 import QtCore
-from PastebinDialog import Ui_PastebinDialog
+from .PastebinDialog import Ui_PastebinDialog
 from pygments import lexers
 
 class Pastebin(QDialog):

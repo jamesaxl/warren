@@ -52,7 +52,7 @@ class FCPIOConnection(object):
         self.socket.settimeout(timeout)
         try:
             self.socket.connect((host, port))
-        except Exception, e:
+        except Exception as e:
             raise FCPConnectionRefused("Failed to connect to %s:%s - %s" % (host, port, e))
         if (None != self._logger):
             self._logger.write("init: connected to %s:%s (timeout %d s)" % (host, port, timeout))
@@ -143,20 +143,20 @@ class FCPIOConnection(object):
 
     def _sendMessage(self, messagename, hasdata=False, **kw):
         self._sendLine(messagename)
-        for k, v in kw.items():
+        for k, v in list(kw.items()):
             line = k + "=" + str(v)
             self._sendLine(line)
-        if kw.has_key("DataLength") or hasdata:
+        if "DataLength" in kw or hasdata:
             self._sendLine("Data")
         else:
             self._sendLine("EndMessage")
 
     def _sendCommand(self, messagename, hasdata, kw):
         self._sendLine(messagename)
-        for k, v in kw.items():
+        for k, v in list(kw.items()):
             line = k + "=" + str(v)
             self._sendLine(line)
-        if kw.has_key("DataLength") or hasdata:
+        if "DataLength" in kw or hasdata:
             self._sendLine("Data")
         else:
             self._sendLine("EndMessage")
@@ -234,7 +234,7 @@ class FCPCommand(object):
         self._items[name] = value
 
     def hasData(self):
-        if self._items.has_key("DataLength"):
+        if "DataLength" in self._items:
             return True
         else:
             return False 
@@ -297,7 +297,7 @@ class FCPConnectionRunner(Thread):
     def run(self):
         try:
             self._fcp_conn = FCPConnection(**self._fcpargs)
-        except Exception, e:
+        except Exception as e:
             if __debug__:
                 traceback.print_exc()
         finally:
@@ -361,7 +361,7 @@ class FCPJob(Thread):
         raise NotImplementedError()
 
     def onMessage(self, msg):
-        print self.__class__.__name__, "got a msg but did not deal with it:\n", str(msg)
+        print(self.__class__.__name__, "got a msg but did not deal with it:\n", str(msg))
 
     def runFCP(self):
         self.prepare()
@@ -395,7 +395,7 @@ class FCPJob(Thread):
     def run(self):
         try:
             self.runFCP()
-        except Exception, e:
+        except Exception as e:
             if __debug__:
                 traceback.print_exc()
             self._ConnectionRunner = None
@@ -418,7 +418,7 @@ class FCPJobRunner(object):
         id = None
         try:
             id = msg.getValue('Identifier')
-        except KeyError, ke:
+        except KeyError as ke:
             if msg.isMessageName(['TestDDAReply', 'TestDDAComplete']):
                 id = msg.getValue('Directory')
             else:

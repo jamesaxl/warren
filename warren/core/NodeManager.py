@@ -4,7 +4,7 @@ from warren.fcp.hyperocha import FCPNode
 from warren.fcp.miniFCP import FCPConnectionRefused, FCPException
 from warren.ui.FileSent import Ui_fileDroppedDialog
 from warren.ui.PasteInsert import Ui_PasteInsertDialog
-import FileManager
+from . import FileManager
 import os.path
 
 if __debug__:
@@ -45,20 +45,20 @@ class NodeManager(QThread):
             self.node = FCPNode(fcpname="WarrenClient",fcphost=self.config['node']['host'],fcpport=int(self.config['node']['fcp_port']))
             self.updateNodeConfigValues()
             self.emit(SIGNAL("nodeConnected()"))
-        except FCPConnectionRefused, e:
+        except FCPConnectionRefused as e:
             if __debug__:
                 traceback.print_exc()
             # TODO tell the user that host/port is wrong (no TCP connect)
             self.node = None
-        except FCPException, e:
+        except FCPException as e:
             if __debug__:
                 traceback.print_exc()
             # TODO tell the user that host/port can be connected, but something
             # else is wrong. Maybe not a FCP 2.0 server?
             self.node = None
-        except Exception, e:
+        except Exception as e:
             if __debug__:
-                print "somthing unexpected went wrong. BUG?"
+                print("somthing unexpected went wrong. BUG?")
                 traceback.print_exc()
             # TODO tell the user that something unexpected went wrong. Bug?
             self.node = None
@@ -98,9 +98,9 @@ class NodeManager(QThread):
                 try:
                     testDDA = self.node.testDDA(async=False, Directory=self.nodeDownloadDir, WantWriteDirectory=True, timeout=5)
 
-                    if 'TestDDAComplete' in str(testDDA.items()) and "'WriteDirectoryAllowed', 'true'" in str(testDDA.items()): #TODO check for the real keys
+                    if 'TestDDAComplete' in str(list(testDDA.items())) and "'WriteDirectoryAllowed', 'true'" in str(list(testDDA.items())): #TODO check for the real keys
                         testDDAResult = True
-                except Exception, e:
+                except Exception as e:
                     testDDAResult = False
 
         if testDDAResult:
@@ -196,7 +196,7 @@ class PasteInsert(QDialog):
             # tell the user
             pass
         else:
-            print "unhandled message "+val1
+            print("unhandled message "+val1)
 
 class FileDropped(QDialog):
 
@@ -236,7 +236,7 @@ class PutPaste(QThread):
         self.putPaste(self.paste, self, async=True, keyType=keyType)
 
     def putPaste(self, qPaste, callback, async=True, keyType='SSK@'):
-        paste = unicode(qPaste)
+        paste = str(qPaste)
         if self.lexer == 'text' and not self.lineNos:
             paste = paste.encode('utf-8')
             mimeType = "text/plain; charset=utf-8"
