@@ -1,4 +1,5 @@
 /.settings
+.ropeproject
 .p*
 *.pyc
 *.swp
