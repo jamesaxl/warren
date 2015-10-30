@@ -1,7 +1,7 @@
-from PyQt4.QtCore import QThread
+from PyQt5.QtCore import QThread
 import urllib.request, urllib.error, urllib.parse, zipfile
 import os.path
-from io import StringIO
+from io import BytesIO
 
 def buildOpener(url, proxy=None):
     if len(url)>=4 and url[:4]=='http' and proxy and proxy.get('host','') != '':
@@ -16,18 +16,18 @@ def buildOpener(url, proxy=None):
 def checkFileForInsert(mimeData, proxy=None):
     for format in mimeData.formats():
         if format == "text/uri-list":
-            url = str(mimeData.urls()[0].toString()).encode('utf-8') # only use the first one
+            url = mimeData.urls()[0].toString() # only use the first one
             opener = buildOpener(url, proxy)
             try:
                 u = opener.open(url)
                 for header in list(u.headers.items()):
-                    if header[0] == 'content-type':
+                    if header[0] == 'Content-type':
                         u.close()
                         return (url, header[1])
-            except IOError as e:
-                if e.errno == 21: #directory on linux
+            except urllib.error.URLError as e:
+                if e.reason.errno == 21: #directory on linux
                     return (url,'directory')
-                elif e.errno == 13 and os.path.isdir(url): #directory on windows
+                elif e.reason.errno == 13 and os.path.isdir(url): #directory on windows
                     return (url,'directory')
                 else:
                     return False
@@ -51,7 +51,7 @@ class DirectoryInsert(QThread):
 
     def zipDir(self, dirPath):
         tmpReq = urllib.request.Request(self.url)
-        plainUrl = tmpReq.get_selector()
+        plainUrl = tmpReq.selector
         parentDir, dirName = os.path.split(plainUrl)
         includeDirInZip = False
 
@@ -63,10 +63,10 @@ class DirectoryInsert(QThread):
                 archivePath = archivePath.replace(dirName + os.path.sep, "", 1)
             return os.path.normcase(archivePath)
 
-        ramFile = StringIO()
+        ramFile = BytesIO()
 
         zipFile = zipfile.ZipFile(ramFile, 'w', compression=zipfile.ZIP_DEFLATED)
-        
+
         for (archiveDirPath, dirNames, fileNames) in os.walk(plainUrl):
             for fileName in fileNames:
                 filePath = os.path.join(archiveDirPath, fileName)
@@ -91,8 +91,8 @@ class FileInsert(QThread):
     def run(self):
         keyType = self.nodeManager.config['warren']['file_keytype']
         tmpReq = urllib.request.Request(self.url)
-        if tmpReq.get_type() == 'file':
-            plainUrl = tmpReq.get_selector()
+        if tmpReq.type == 'file':
+            plainUrl = tmpReq.selector
             self.nodeManager.node.putQueueFile(keyType, plainUrl)
         else:
             opener = buildOpener(self.url, self.proxy)

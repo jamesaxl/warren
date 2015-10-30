@@ -1,4 +1,4 @@
-from PyQt4.QtGui import QDialog
+from PyQt5.QtWidgets import QDialog
 from .SettingsDialog import Ui_SettingsDialog
 
 class Settings(QDialog):

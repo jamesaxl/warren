@@ -1,5 +1,6 @@
-from PyQt4.QtGui import QWidget, QLabel, QHBoxLayout, QMenu, qApp, QPixmap, QFrame, QClipboard, QContextMenuEvent, QIcon, QApplication
-from PyQt4.QtCore import Qt, SIGNAL
+from PyQt5.QtWidgets import QWidget, QLabel, QHBoxLayout, QMenu, qApp, QFrame, QApplication
+from PyQt5.QtGui import QPixmap, QClipboard, QContextMenuEvent, QIcon
+from PyQt5.QtCore import Qt
 from warren.core import Config, NodeManager, FileManager, Browser
 from warren.ui import Settings, Pastebin, DropZone, Clipboard
 import sys, os
@@ -23,7 +24,7 @@ class MainWindow(QWidget):
         self.imagePath = determine_path()
         self.setWindowIcon(QIcon(self.imagePath+'warren.ico'))
         layout = QHBoxLayout()
-        layout.setMargin(0)
+        layout.setContentsMargins(0, 0, 0, 0)
         self.dropZone = DropZone.DropZone()
         self.dropZone.setMargin(0)
         self.dropZone.setPixmap(QPixmap(self.imagePath+'dropzone_nocon.png'))
@@ -51,13 +52,13 @@ class MainWindow(QWidget):
         self.pastebin = Pastebin.Pastebin(self)
         self.nodeManager = NodeManager.NodeManager(self.config)
         self.setKeepOnTop(self.config['warren'].as_bool('start_on_top'))
-        self.connect(self.nodeManager, SIGNAL("nodeConnected()"), self.nodeConnected)
-        self.connect(self.nodeManager, SIGNAL("nodeConnected()"), self.pastebin.nodeConnected)
-        self.connect(self.nodeManager, SIGNAL("nodeConnectionLost()"), self.nodeNotConnected)
-        self.connect(self.nodeManager, SIGNAL("nodeConnectionLost()"), self.pastebin.nodeNotConnected)
-        self.connect(self.nodeManager, SIGNAL("pasteCanceledMessage()"), self.pastebin.reject)
-        self.connect(self.pastebin, SIGNAL("newPaste(QString, QString, QString)"), self.nodeManager.newPaste)
-        self.connect(self.nodeManager, SIGNAL("pasteFinished()"), self.pastebin.reject)
+        self.nodeManager.sigNodeConnected.connect(self.nodeConnected)
+        self.nodeManager.sigNodeConnected.connect(self.pastebin.nodeConnected)
+        self.nodeManager.sigNodeConnectionLost.connect(self.nodeNotConnected)
+        self.nodeManager.sigNodeConnectionLost.connect(self.pastebin.nodeNotConnected)
+        self.nodeManager.sigPasteCanceledMessage.connect(self.pastebin.reject)
+        self.pastebin.sigNewPaste.connect(self.nodeManager.newPaste)
+        self.nodeManager.sigPasteFinished.connect(self.pastebin.accept)
 
         self.browser = Browser.Browser(self.config)
 
@@ -91,7 +92,7 @@ class MainWindow(QWidget):
                 label = key[0]+'@'+key[1][:7]+'...'+key[1][-20:]
                 mItem = downloadMenu.addAction(label)
                 receiver = lambda taskType=idx:self.dlAction(taskType)
-                self.connect(mItem, SIGNAL('triggered()'), receiver)
+                mItem.triggered.connect(receiver)
                 downloadMenu.addAction(mItem)
             menu.addMenu(downloadMenu)
 
@@ -100,7 +101,7 @@ class MainWindow(QWidget):
                 label = key[0]+'@'+key[1][:7]+'...'+key[1][-14:]
                 bItem = browserMenu.addAction(label)
                 receiver = lambda taskType=idx:self.brAction(taskType)
-                self.connect(bItem, SIGNAL('triggered()'), receiver)
+                bItem.triggered.connect(receiver)
                 browserMenu.addAction(bItem)
             menu.addMenu(browserMenu)
 
@@ -155,7 +156,7 @@ class MainWindow(QWidget):
     def clipboardNewKey(self,keys):
         for key in keys:
             if key not in self.clipboardKeys:
-                if len(self.clipboardKeys) >= self.config['warren']['max_clipboard_keys']:
+                if len(self.clipboardKeys) >= int(self.config['warren']['max_clipboard_keys']):
                     self.clipboardKeys.pop(-1)
                 self.clipboardKeys.insert(0,key)
 

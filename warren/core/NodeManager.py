@@ -1,5 +1,6 @@
-from PyQt4.QtCore import QThread, SIGNAL, QString, pyqtSignal
-from PyQt4.QtGui import QDialog, QClipboard, qApp
+from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtWidgets import QDialog, qApp
+from PyQt5.QtGui import QClipboard
 from warren.fcp.hyperocha import FCPNode
 from warren.fcp.miniFCP import FCPConnectionRefused, FCPException
 from warren.ui.FileSent import Ui_fileDroppedDialog
@@ -22,7 +23,11 @@ WARREN_DEFAULT_TIMEOUT = 5000
 
 class NodeManager(QThread):
 
-    pasteCanceledMessage = pyqtSignal()
+    sigPasteCanceledMessage = pyqtSignal()
+    sigNodeConnected = pyqtSignal()
+    sigNodeNotConnected = pyqtSignal()
+    sigNodeConnectionLost = pyqtSignal()
+    sigPasteFinished = pyqtSignal()
 
     def __init__(self,config):
         QThread.__init__(self, None)
@@ -38,13 +43,13 @@ class NodeManager(QThread):
         QThread.msleep(1000) # wait a second or sometimes signals can't get through right after startup
         self.watchdog = NodeWatchdog(self)
         self.connectNode()
-        self.connect(self.watchdog, SIGNAL("nodeNotConnected()"), self.nodeNotConnected)
+        self.sigNodeNotConnected.connect(self.nodeNotConnected)
 
     def connectNode(self):
         try:
             self.node = FCPNode(fcpname="WarrenClient",fcphost=self.config['node']['host'],fcpport=int(self.config['node']['fcp_port']))
             self.updateNodeConfigValues()
-            self.emit(SIGNAL("nodeConnected()"))
+            self.sigNodeConnected.emit()
         except FCPConnectionRefused as e:
             if __debug__:
                 traceback.print_exc()
@@ -58,7 +63,7 @@ class NodeManager(QThread):
             self.node = None
         except Exception as e:
             if __debug__:
-                print("somthing unexpected went wrong. BUG?")
+                print("something unexpected went wrong. BUG?")
                 traceback.print_exc()
             # TODO tell the user that something unexpected went wrong. Bug?
             self.node = None
@@ -70,7 +75,7 @@ class NodeManager(QThread):
             self.nodeDownloadDir = nconfig['current.node.downloadsDir']
             self.downloadDDA = nconfig['expertFlag.fcp.assumeDownloadDDAIsAllowed']=='true'
             if not os.path.isabs(self.nodeDownloadDir):
-                self.nodeDownloadDir = os.path.join(nconfig['current.node.cfgDir'], self.nodeDownloadDir)
+                self.nodeDownloadDir = os.path.join(nconfig['current.node.install.cfgDir'], self.nodeDownloadDir)
         else:
             # getconfig failed. One of the booth values is set:
             # nconfig - the exception causing failure or None (Exception)
@@ -81,7 +86,7 @@ class NodeManager(QThread):
                 raise Exception(str(errmsg))
 
     def nodeNotConnected(self):
-        self.emit(SIGNAL("nodeConnectionLost()"))
+        self.sigNodeConnectionLost.emit()
         #if self.node:
             #self.node.shutdown()
         #    self.node = None
@@ -112,7 +117,7 @@ class NodeManager(QThread):
     def pasteCanceled(self):
         if hasattr(self, 'pasteInsert'):
             # TODO cancel request in node, too (FCP message "RemoveRequest")
-            self.pasteCanceledMessage.emit()
+            self.sigPasteCanceledMessage.emit()
             self.pasteInsertDialog.close()
 
     def newPaste(self,qPaste,lexer,lineNos):
@@ -129,7 +134,7 @@ class NodeManager(QThread):
         self.pasteInsert.start()
 
     def pasteMessageForwarder(self, msg):
-        self.emit(SIGNAL("inserterMessage(QString)"),QString(msg))
+        self.sigInserterMessage.emit(msg)
 
     def insertFile(self, url, mimeType):
         if mimeType == 'directory':
@@ -290,7 +295,7 @@ class NodeWatchdog(QThread):
                 isOK=False
 
             if not isOK:
-                self.emit(SIGNAL("nodeNotConnected()"))
+                self.sigNodeNotConnected.emit()
 
     def reset(self):
         _ticks = 0

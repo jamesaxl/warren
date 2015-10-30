@@ -1,7 +1,7 @@
-from PyQt4 import QtCore, QtGui
+from PyQt5 import QtCore, QtWidgets
 
 
-class DropZone(QtGui.QLabel):
+class DropZone(QtWidgets.QLabel):
 
     dropped = QtCore.pyqtSignal(QtCore.QMimeData)
     entered = QtCore.pyqtSignal(QtCore.QMimeData)

@@ -65,16 +65,16 @@ class FCPIOConnection(object):
             pass
 
     def _readline(self):
-        buf = []
+        buf = b''
         while True:
             c = self.socket.recv(1)
             if c:
-                if c == '\n':
+                if c == b'\n':
                     break
-                buf.append(c)
+                buf += c
             else:
                 raise FCPException("FCP socket closed by node")
-        ln = "".join(buf)
+        ln = buf.decode("utf-8")
         return ln
 
     def read(self, n):
@@ -102,7 +102,7 @@ class FCPIOConnection(object):
                 raise FCPException("FCP socket closed by node")
             remaining -= chunklen
         if (None != self._logger):
-            self._logger.write("in: <"+str(n)+" Bytes of data skipped>")
+            self._logger.write("in: <%d Bytes of data skipped>" % n)
 
     def close(self):
         if (None != self._logger):
@@ -131,15 +131,15 @@ class FCPIOConnection(object):
                 break
 
             # normal 'key=val' pairs left
-            k, v = line.split("=", 1)
-            items[k] = v
+            k = line.split("=", 1)
+            items[k[0]] = k[1]
 
         return FCPMessage(messagename, items, endmarker)
 
     def _sendLine(self, line):
         if (None != self._logger):
             self._logger.write("out: "+line)
-        self.socket.sendall(line+"\n")
+        self.socket.sendall((line+"\n").encode())
 
     def _sendMessage(self, messagename, hasdata=False, **kw):
         self._sendLine(messagename)

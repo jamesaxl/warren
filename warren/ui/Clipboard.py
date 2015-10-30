@@ -1,5 +1,6 @@
-from PyQt4.QtGui import QWidget, qApp, QClipboard
-from PyQt4.QtCore import QString, pyqtSignal
+from PyQt5.QtWidgets import QWidget, qApp
+from PyQt5.QtGui import QClipboard
+from PyQt5.QtCore import pyqtSignal
 import re
 
 #KEY_PATTERN = re.compile('([USK@|CHK@|SSK@|KSK@].*)[\s|\r|\n]')
@@ -27,11 +28,10 @@ class Clipboard(QWidget):
 
         cb = self.clip.mimeData()
         if cb.hasText():
-            self.findKeys(str(cb.text()).encode('utf-8'))
+            self.findKeys(cb.text())
 
     def selChanged(self):
-
-        text = str(self.clip.text("plain",QClipboard.Selection)).encode('utf-8')
+        text, _  = self.clip.text("plain", QClipboard.Selection)
         self.findKeys(text)
 
     def findKeys(self, text):
@@ -45,6 +45,6 @@ class Clipboard(QWidget):
 #            if len(m) > 0:
 #                self.clipboardKey.emit(m[0].strip())
 #                break
-            
+
 
 

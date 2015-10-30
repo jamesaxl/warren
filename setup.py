@@ -12,4 +12,4 @@ setup(name = "warren",
     package_data = {'warren' : files },
     scripts = ["WarrenUI"],
     install_requires = ['configobj>=4.7.2', 'Pygments>=1.4'],
-) 
+)
